@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import time
 
 
@@ -141,6 +142,8 @@ def open_lissajous():
     fig = plt.figure(facecolor='#2E3440')  # Темный фон для графика
     canvas = FigureCanvas(fig)
     layout.addWidget(canvas)
+    toolbar = NavigationToolbar(canvas, lissajous_window)
+    layout.addWidget(toolbar)
 
     # Макет для параметров
     param_layout = QHBoxLayout()
@@ -213,7 +216,10 @@ def plot_lissajous(a_input, b_input, delta_input):
     # Очистка и построение графика
     fig.clear()
     ax = fig.add_subplot(111, projection='3d', facecolor='#2E3440')  # Темный фон для графика
-    ax.plot(x, y, z, label='Фигура Лиссажу', color='#81A1C1')  # Голубой цвет линии
+    ax.plot(x, y, z, label='Фигура Лиссажу', color='#000000')  # Голубой цвет линии
+    ax.grid(True, which='major', linestyle='-', linewidth=0.75, color='#81A1C1')  # Основные линии
+    ax.minorticks_on()
+    ax.grid(True, which='minor', linestyle=':', linewidth=0.5, color='#81A1C1')  # Вспомогательные линии
     ax.legend()
     canvas.draw()
 
@@ -286,6 +292,8 @@ def open_beats():
     fig = plt.figure(facecolor='#2E3440')  # Темный фон для графика
     canvas = FigureCanvas(fig)
     layout.addWidget(canvas)
+    toolbar = NavigationToolbar(canvas, beats_window)
+    layout.addWidget(toolbar)
 
     # Макет для параметров
     param_layout = QHBoxLayout()
@@ -349,7 +357,10 @@ def plot_beats(f1_input, f2_input):
     # Очистка и построение графика
     fig.clear()
     ax = fig.add_subplot(111, facecolor='#2E3440')  # Темный фон для графика
-    ax.plot(t, y, label='Биение', color='#81A1C1')  # Голубой цвет линии
+    ax.plot(t, y, label='Биение', color='#000000')  # Голубой цвет линии\
+    ax.grid(True, which='major', linestyle='-', linewidth=0.75, color='#81A1C1')  # Основные линии
+    ax.minorticks_on()
+    ax.grid(True, which='minor', linestyle=':', linewidth=0.5, color='#81A1C1')  # Вспомогательные линии
     ax.legend()
     canvas.draw()
 
