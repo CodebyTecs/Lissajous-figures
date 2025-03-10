@@ -2,7 +2,15 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLabel, QLineEdit, QHBoxLayout, QMessageBox
+    QApplication,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+    QLabel,
+    QLineEdit,
+    QHBoxLayout,
+    QMessageBox,
 )
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -19,6 +27,7 @@ canvas = None
 ax = None
 animation = None
 is_animation_running = False  # Флаг для отслеживания состояния анимации
+is_3d_mode = True  # Переменная для отслеживания режима
 
 
 # Функция для создания главного окна
@@ -34,7 +43,8 @@ def create_main_window():
     layout = QVBoxLayout()
 
     # Настройка стилей для окна
-    main_window.setStyleSheet("""
+    main_window.setStyleSheet(
+        """
         QMainWindow {
             background-color: #2E3440;  /* Темный фон */
         }
@@ -64,11 +74,12 @@ def create_main_window():
             border-radius: 5px;  /* Закругленные углы */
             border: 2px solid #81A1C1;  /* Голубая рамка */
         }
-    """)
+    """
+    )
 
     # Надпись для выбора режима
     label = QLabel("Выберите режим:")
-    label.setAlignment(Qt.AlignmentFlag.AlignCenter) 
+    label.setAlignment(Qt.AlignmentFlag.AlignCenter)
     layout.addWidget(label)
 
     # Кнопка для открытия режима "3D визуализация фигур Лиссажу"
@@ -94,6 +105,13 @@ def create_main_window():
     return main_window
 
 
+# Функция для переключения режима 2D/3D
+def toggle_lissajous_mode(a_input, b_input, delta_input):
+    global is_3d_mode
+    is_3d_mode = not is_3d_mode  # Переключаем режим
+    plot_lissajous(a_input, b_input, delta_input)  # Перерисовываем график
+
+
 # Функция для открытия режима "3D визуализация фигур Лиссажу"
 def open_lissajous():
     global current_window, fig, canvas, ax, animation, is_animation_running
@@ -104,7 +122,8 @@ def open_lissajous():
     lissajous_window.setGeometry(100, 100, 800, 600)
 
     # Настройка стилей для окна
-    lissajous_window.setStyleSheet("""
+    lissajous_window.setStyleSheet(
+        """
         QMainWindow {
             background-color: #2E3440;  /* Темный фон */
         }
@@ -133,13 +152,14 @@ def open_lissajous():
             border-radius: 5px;  /* Закругленные углы */
             border: 2px solid #81A1C1;  /* Голубая рамка */
         }
-    """)
+    """
+    )
 
     # Основной макет
     layout = QVBoxLayout()
 
     # Создание графика
-    fig = plt.figure(facecolor='#2E3440')  # Темный фон для графика
+    fig = plt.figure(facecolor="#2E3440")  # Темный фон для графика
     canvas = FigureCanvas(fig)
     layout.addWidget(canvas)
     toolbar = NavigationToolbar(canvas, lissajous_window)
@@ -173,9 +193,18 @@ def open_lissajous():
     update_button.clicked.connect(lambda: plot_lissajous(a_input, b_input, delta_input))
     layout.addWidget(update_button)
 
+    # Кнопка для переключения 2D/3D
+    mode_button = QPushButton("Переключить 2D/3D")
+    mode_button.clicked.connect(
+        lambda: toggle_lissajous_mode(a_input, b_input, delta_input)
+    )
+    layout.addWidget(mode_button)
+
     # Кнопка для запуска/остановки анимации
     animation_button = QPushButton("Анимация")
-    animation_button.clicked.connect(lambda: toggle_animation(a_input, b_input, delta_input))
+    animation_button.clicked.connect(
+        lambda: toggle_animation(a_input, b_input, delta_input)
+    )
     layout.addWidget(animation_button)
 
     # Кнопка для сохранения графика
@@ -200,7 +229,7 @@ def open_lissajous():
 
 # Функция для построения фигур Лиссажу
 def plot_lissajous(a_input, b_input, delta_input):
-    global fig, ax
+    global fig, ax, is_3d_mode
 
     # Получение параметров из полей ввода
     ω1 = float(a_input.text())
@@ -215,11 +244,17 @@ def plot_lissajous(a_input, b_input, delta_input):
 
     # Очистка и построение графика
     fig.clear()
-    ax = fig.add_subplot(111, projection='3d', facecolor='#2E3440')  # Темный фон для графика
-    ax.plot(x, y, z, label='Фигура Лиссажу', color='#000000')  # Голубой цвет линии
-    ax.grid(True, which='major', linestyle='-', linewidth=0.75, color='#81A1C1')  # Основные линии
+    if is_3d_mode:
+        z = t / (2 * np.pi)
+        ax = fig.add_subplot(111, projection="3d", facecolor="#2E3440")
+        ax.plot(x, y, z, label="Фигура Лиссажу", color="#000000")
+    else:
+        ax = fig.add_subplot(111, facecolor="#2E3440")
+        ax.plot(x, y, label="Фигура Лиссажу", color="#000000")
+
+    ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1")
     ax.minorticks_on()
-    ax.grid(True, which='minor', linestyle=':', linewidth=0.5, color='#81A1C1')  # Вспомогательные линии
+    ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1")
     ax.legend()
     canvas.draw()
 
@@ -254,7 +289,8 @@ def open_beats():
     beats_window.setGeometry(100, 100, 800, 600)
 
     # Настройка стилей для окна
-    beats_window.setStyleSheet("""
+    beats_window.setStyleSheet(
+        """
         QMainWindow {
             background-color: #2E3440;  /* Темный фон */
         }
@@ -283,13 +319,14 @@ def open_beats():
             border-radius: 5px;  /* Закругленные углы */
             border: 2px solid #81A1C1;  /* Голубая рамка */
         }
-    """)
+    """
+    )
 
     # Основной макет
     layout = QVBoxLayout()
 
     # Создание графика
-    fig = plt.figure(facecolor='#2E3440')  # Темный фон для графика
+    fig = plt.figure(facecolor="#2E3440")  # Темный фон для графика
     canvas = FigureCanvas(fig)
     layout.addWidget(canvas)
     toolbar = NavigationToolbar(canvas, beats_window)
@@ -356,11 +393,15 @@ def plot_beats(f1_input, f2_input):
 
     # Очистка и построение графика
     fig.clear()
-    ax = fig.add_subplot(111, facecolor='#2E3440')  # Темный фон для графика
-    ax.plot(t, y, label='Биение', color='#000000')  # Голубой цвет линии\
-    ax.grid(True, which='major', linestyle='-', linewidth=0.75, color='#81A1C1')  # Основные линии
+    ax = fig.add_subplot(111, facecolor="#2E3440")  # Темный фон для графика
+    ax.plot(t, y, label="Биение", color="#000000")  # Голубой цвет линии\
+    ax.grid(
+        True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1"
+    )  # Основные линии
     ax.minorticks_on()
-    ax.grid(True, which='minor', linestyle=':', linewidth=0.5, color='#81A1C1')  # Вспомогательные линии
+    ax.grid(
+        True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1"
+    )  # Вспомогательные линии
     ax.legend()
     canvas.draw()
 
@@ -389,7 +430,9 @@ def toggle_beats_animation(f1_input, f2_input):
 def save_plot():
     filename = "graph.png"
     fig.savefig(filename)
-    QMessageBox.information(current_window, "Сохранено", f"График сохранен как {filename}")
+    QMessageBox.information(
+        current_window, "Сохранено", f"График сохранен как {filename}"
+    )
 
 
 # Функция для возврата на главный экран
