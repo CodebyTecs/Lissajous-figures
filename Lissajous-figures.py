@@ -104,6 +104,111 @@ def create_main_window():
     current_window = main_window
     return main_window
 
+# Функция для открытия графика фигуры Лиссажу в новом окне
+def open_lissajous_graph_in_new_window(a_input, b_input, delta_input):
+    global new_window  # Добавляем глобальную переменную
+
+    new_window = QMainWindow()  
+    new_window.setWindowTitle("График фигуры Лиссажу")
+    new_window.setGeometry(200, 200, 800, 600)
+
+    layout = QVBoxLayout()
+
+    # Новый график
+    fig_new = plt.figure(facecolor="#2E3440")
+    canvas_new = FigureCanvas(fig_new)
+    layout.addWidget(canvas_new)
+
+    toolbar = NavigationToolbar(canvas_new, new_window)
+    layout.addWidget(toolbar)
+
+    # Получение параметров
+    ω1 = float(a_input.text())
+    ω2 = float(b_input.text())
+    φ = float(delta_input.text())
+
+    # Построение графика
+    t = np.linspace(0, 2 * np.pi, 1000)
+    x = np.sin(ω1 * t)
+    y = np.sin(ω2 * t + φ)
+
+    # Очистка и построение графика
+    fig_new.clear() 
+
+    if is_3d_mode:
+        z = t / (2 * np.pi)
+        ax = fig_new.add_subplot(111, projection="3d", facecolor="#2E3440")
+        ax.plot(x, y, z, label="Фигура Лиссажу", color="#000000")
+        ax.set_xlabel("ось X")
+        ax.set_ylabel("ось Y")
+        ax.set_zlabel("ось Z")
+    else:
+        ax = fig_new.add_subplot(111, facecolor="#2E3440")
+        ax.plot(x, y, label="Фигура Лиссажу", color="#000000")
+        ax.set_xlabel("ось X")
+        ax.set_ylabel("ось Y")
+
+    ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1")
+    ax.minorticks_on()
+    ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1")
+    ax.legend()
+    canvas_new.draw()
+
+    container = QWidget()
+    container.setLayout(layout)
+    new_window.setCentralWidget(container)
+    
+    new_window.show()  
+
+# Функция для открытия графика биений в новом окне
+def open_beats_graph_in_new_window(a_input, b_input):
+    global new_window  # Глобальная переменная для хранения окна
+
+    new_window = QMainWindow()
+    new_window.setWindowTitle("График биений")
+    new_window.setGeometry(200, 200, 800, 600)
+
+    layout = QVBoxLayout()
+
+    # Создаем новый график
+    fig_new = plt.figure(facecolor="#2E3440")
+    canvas_new = FigureCanvas(fig_new)
+    layout.addWidget(canvas_new)
+
+    toolbar = NavigationToolbar(canvas_new, new_window)
+    layout.addWidget(toolbar)
+
+    # Получаем параметры
+    f1 = float(a_input.text())  # Первая частота
+    f2 = float(b_input.text())  # Вторая частота
+
+    # Генерация временной оси
+    t = np.linspace(0, 2, 1000)  # 2 секунды, 1000 точек
+    y = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)  # Биения
+
+    # Очистка и построение графика
+    fig_new.clear()
+    ax = fig_new.add_subplot(111, facecolor="#2E3440")  # Темный фон для графика
+    ax.plot(t, y, label="Биение", color="#000000")  # Голубой цвет линии
+    ax.grid(
+        True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1"
+    )  # Основные линии
+    ax.minorticks_on()
+    ax.grid(
+        True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1"
+    )  # Вспомогательные линии
+    ax.set_xlabel("ось X")
+    ax.set_ylabel("ось Y")
+    ax.legend()
+
+    canvas_new.draw()
+
+    # Создаем контейнер и устанавливаем его в окно
+    container = QWidget()
+    container.setLayout(layout)
+    new_window.setCentralWidget(container)
+
+    new_window.show()
 
 # Функция для переключения режима 2D/3D
 def toggle_lissajous_mode(a_input, b_input, delta_input):
@@ -193,6 +298,11 @@ def open_lissajous():
     update_button.clicked.connect(lambda: plot_lissajous(a_input, b_input, delta_input))
     layout.addWidget(update_button)
 
+    # Кнопка для открытия графика в новом окне
+    open_new_window_button = QPushButton("Открыть график в новом окне")
+    open_new_window_button.clicked.connect(lambda: open_lissajous_graph_in_new_window(a_input, b_input, delta_input))
+    layout.addWidget(open_new_window_button)
+
     # Кнопка для переключения 2D/3D
     mode_button = QPushButton("Переключить 2D/3D")
     mode_button.clicked.connect(
@@ -248,9 +358,14 @@ def plot_lissajous(a_input, b_input, delta_input):
         z = t / (2 * np.pi)
         ax = fig.add_subplot(111, projection="3d", facecolor="#2E3440")
         ax.plot(x, y, z, label="Фигура Лиссажу", color="#000000")
+        ax.set_xlabel("ось X")
+        ax.set_ylabel("ось Y")
+        ax.set_zlabel("ось Z")
     else:
         ax = fig.add_subplot(111, facecolor="#2E3440")
         ax.plot(x, y, label="Фигура Лиссажу", color="#000000")
+        ax.set_xlabel("ось X")
+        ax.set_ylabel("ось Y")
 
     ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1")
     ax.minorticks_on()
@@ -354,6 +469,11 @@ def open_beats():
     update_button.clicked.connect(lambda: plot_beats(f1_input, f2_input))
     layout.addWidget(update_button)
 
+    # Кнопка для открытия графика в новом окне
+    open_new_window_button = QPushButton("Открыть график в новом окне")
+    open_new_window_button.clicked.connect(lambda: open_beats_graph_in_new_window(f1_input, f2_input))
+    layout.addWidget(open_new_window_button)
+
     # Кнопка для запуска/остановки анимации
     animation_button = QPushButton("Анимация")
     animation_button.clicked.connect(lambda: toggle_beats_animation(f1_input, f2_input))
@@ -403,6 +523,8 @@ def plot_beats(f1_input, f2_input):
         True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1"
     )  # Вспомогательные линии
     ax.legend()
+    ax.set_xlabel("ось X")
+    ax.set_ylabel("ось Y")
     canvas.draw()
 
 
