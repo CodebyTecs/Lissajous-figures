@@ -37,7 +37,7 @@ def create_main_window():
     # Создание главного окна
     main_window = QMainWindow()
     main_window.setWindowTitle("Физические визуализации")
-    main_window.setGeometry(100, 100, 400, 300)
+    main_window.setGeometry(200, 200, 800, 600)
 
     # Основной макет
     layout = QVBoxLayout()
@@ -127,10 +127,11 @@ def open_lissajous_graph_in_new_window(a_input, b_input, delta_input):
     ω2 = float(b_input.text())
     φ = float(delta_input.text())
 
-    # Построение графика
+     # Генерация данных для фигуры Лиссажу
     t = np.linspace(0, 2 * np.pi, 1000)
-    x = np.sin(ω1 * t)
-    y = np.sin(ω2 * t + φ)
+    x = np.sin(ω1 * t + φ)
+    y = np.sin(ω2 * t)
+    z = t / (2 * np.pi)
 
     # Очистка и построение графика
     fig_new.clear() 
@@ -183,8 +184,8 @@ def open_beats_graph_in_new_window(a_input, b_input):
     f2 = float(b_input.text())  # Вторая частота
 
     # Генерация временной оси
-    t = np.linspace(0, 2, 1000)  # 2 секунды, 1000 точек
-    y = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)  # Биения
+    t = np.linspace(0, 1, 1000)
+    y = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
 
     # Очистка и построение графика
     fig_new.clear()
@@ -357,6 +358,7 @@ def plot_lissajous(a_input, b_input, delta_input):
     if is_3d_mode:
         z = t / (2 * np.pi)
         ax = fig.add_subplot(111, projection="3d", facecolor="#2E3440")
+        
         ax.plot(x, y, z, label="Фигура Лиссажу", color="#000000")
         ax.set_xlabel("ось X")
         ax.set_ylabel("ось Y")
@@ -376,20 +378,44 @@ def plot_lissajous(a_input, b_input, delta_input):
 
 # Функция для запуска/остановки анимации
 def toggle_animation(a_input, b_input, delta_input):
-    global animation, is_animation_running
+    global animation, is_animation_running, x, y, z
 
     if is_animation_running:
-        # Остановка анимации
         animation.event_source.stop()
         is_animation_running = False
         print("Анимация остановлена")
     else:
-        # Запуск анимации
-        def update(frame):
-            delta_input.setText(str(float(delta_input.text()) + 0.1))
-            plot_lissajous(a_input, b_input, delta_input)
+        # Получаем параметры
+        ω1 = float(a_input.text())
+        ω2 = float(b_input.text())
+        φ = float(delta_input.text())
 
-        animation = FuncAnimation(fig, update, frames=50, interval=100)
+        # Генерация точек
+        t = np.linspace(0, 2 * np.pi, 500)
+        x = np.sin(ω1 * t)
+        y = np.sin(ω2 * t + φ)
+        z = t / (2 * np.pi)
+
+        def update(frame):
+            global ax  # Используем тот же ax
+
+            # ⚡ Сохраняем угол ПЕРЕД очисткой!
+            elev, azim = ax.elev, ax.azim  
+
+            ax.clear()  # Очищаем график
+            ax.view_init(elev=elev, azim=azim)  # Восстанавливаем угол обзора
+
+            ax.plot(x[:frame], y[:frame], z[:frame], color="black")  # Обновляем данные
+
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+            ax.set_zlabel("Z")
+
+            ax.set_xlim([-1, 1])
+            ax.set_ylim([-1, 1])
+            ax.set_zlim([-1, 1])
+
+        animation = FuncAnimation(fig, update, frames=len(x), interval=50)
         is_animation_running = True
         print("Анимация запущена")
 
