@@ -17,8 +17,6 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-import time
-
 
 # Глобальные переменные
 current_window = None
@@ -26,77 +24,46 @@ fig = None
 canvas = None
 ax = None
 animation = None
-is_animation_running = False  # Флаг для отслеживания состояния анимации
-is_3d_mode = True  # Переменная для отслеживания режима
+is_animation_running = False
+is_3d_mode = True
 
-
-# Функция для создания главного окна
 def create_main_window():
     global current_window
 
-    # Создание главного окна
     main_window = QMainWindow()
     main_window.setWindowTitle("Физические визуализации")
     main_window.setGeometry(200, 200, 800, 600)
 
-    # Основной макет
     layout = QVBoxLayout()
+    main_window.setStyleSheet("""
+        QMainWindow { background-color: white; }
+        QLabel { color: black; font-size: 18px; font-weight: bold; padding: 10px; }
+        QPushButton { 
+            background-color: white; color: black; font-size: 16px; 
+            padding: 10px; border-radius: 5px; border: 2px solid black;
+            min-width: 300px;
+        }
+        QPushButton:hover { background-color: black; color: white; }
+        QLineEdit { 
+            background-color: white; color: black; font-size: 14px; 
+            padding: 5px; border-radius: 5px; border: 2px solid black;
+        }
+    """)
 
-    # Настройка стилей для окна
-    main_window.setStyleSheet(
-        """
-        QMainWindow {
-            background-color: #2E3440;  /* Темный фон */
-        }
-        QLabel {
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 18px;
-            font-weight: bold;
-            padding: 10px;
-        }
-        QPushButton {
-            background-color: #4C566A;  /* Серый фон */
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 16px;
-            padding: 10px;
-            border-radius: 5px;  /* Закругленные углы */
-            border: 2px solid #81A1C1;  /* Голубая рамка */
-        }
-        QPushButton:hover {
-            background-color: #81A1C1;  /* Голубой фон при наведении */
-            color: #2E3440;  /* Темный текст */
-        }
-        QLineEdit {
-            background-color: #4C566A;  /* Серый фон */
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 14px;
-            padding: 5px;
-            border-radius: 5px;  /* Закругленные углы */
-            border: 2px solid #81A1C1;  /* Голубая рамка */
-        }
-    """
-    )
-
-    # Надпись для выбора режима
     label = QLabel("Выберите режим:")
     label.setAlignment(Qt.AlignmentFlag.AlignCenter)
     layout.addWidget(label)
 
-    # Кнопка для открытия режима "3D визуализация фигур Лиссажу"
-    lissajous_button = QPushButton("3D визуализация фигур Лиссажу")
-    lissajous_button.clicked.connect(open_lissajous)
-    layout.addWidget(lissajous_button)
+    buttons = [
+        ("3D визуализация фигур Лиссажу", open_lissajous),
+        ("Сложение двух волн - биение", open_beats)
+    ]
 
-    # Кнопка для открытия режима "Сложение двух волн - биение"
-    beat_button = QPushButton("Сложение двух волн - биение")
-    beat_button.clicked.connect(open_beats)
-    layout.addWidget(beat_button)
+    for text, handler in buttons:
+        btn = QPushButton(text)
+        btn.clicked.connect(handler)
+        layout.addWidget(btn)
 
-    # Установка отступов и выравнивания
-    layout.setSpacing(20)  # Расстояние между элементами
-    layout.setContentsMargins(30, 30, 30, 30)  # Отступы от краев окна
-
-    # Установка основного виджета
     container = QWidget()
     container.setLayout(layout)
     main_window.setCentralWidget(container)
@@ -104,494 +71,373 @@ def create_main_window():
     current_window = main_window
     return main_window
 
-# Функция для открытия графика фигуры Лиссажу в новом окне
 def open_lissajous_graph_in_new_window(a_input, b_input, delta_input):
-    global new_window  # Добавляем глобальную переменную
+    global new_window
 
-    new_window = QMainWindow()  
+    new_window = QMainWindow()
     new_window.setWindowTitle("График фигуры Лиссажу")
-    new_window.setGeometry(200, 200, 800, 600)
+    new_window.setGeometry(200, 200, 1000, 800)
 
     layout = QVBoxLayout()
-
-    # Новый график
-    fig_new = plt.figure(facecolor="#2E3440")
+    fig_new = plt.figure(figsize=(10, 8), facecolor="white")
     canvas_new = FigureCanvas(fig_new)
     layout.addWidget(canvas_new)
+    layout.addWidget(NavigationToolbar(canvas_new, new_window))
 
-    toolbar = NavigationToolbar(canvas_new, new_window)
-    layout.addWidget(toolbar)
-
-    # Получение параметров
     ω1 = float(a_input.text())
     ω2 = float(b_input.text())
     φ = float(delta_input.text())
 
-     # Генерация данных для фигуры Лиссажу
     t = np.linspace(0, 2 * np.pi, 1000)
-    x = np.sin(ω1 * t + φ)
-    y = np.sin(ω2 * t)
-    z = t / (2 * np.pi)
+    x = np.cos(ω1 * t)
+    y = np.cos(ω2 * t + φ)
 
-    # Очистка и построение графика
-    fig_new.clear() 
-
+    fig_new.clear()
     if is_3d_mode:
         z = t / (2 * np.pi)
-        ax = fig_new.add_subplot(111, projection="3d", facecolor="#2E3440")
-        ax.plot(x, y, z, label="Фигура Лиссажу", color="#000000")
-        ax.set_xlabel("ось X")
-        ax.set_ylabel("ось Y")
+        ax = fig_new.add_subplot(111, projection="3d", facecolor="white")
+        ax.plot(x, y, z, label="Фигура Лиссажу", color="black")
         ax.set_zlabel("ось Z")
     else:
-        ax = fig_new.add_subplot(111, facecolor="#2E3440")
-        ax.plot(x, y, label="Фигура Лиссажу", color="#000000")
-        ax.set_xlabel("ось X")
-        ax.set_ylabel("ось Y")
+        ax = fig_new.add_subplot(111, facecolor="white")
+        ax.plot(x, y, label="Фигура Лиссажу", color="black")
 
-    ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1")
+    ax.set_xlabel("ось X")
+    ax.set_ylabel("ось Y")
+    ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="black")
     ax.minorticks_on()
-    ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1")
+    ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="gray")
     ax.legend()
     canvas_new.draw()
 
     container = QWidget()
     container.setLayout(layout)
     new_window.setCentralWidget(container)
-    
-    new_window.show()  
+    new_window.show()
 
-# Функция для открытия графика биений в новом окне
 def open_beats_graph_in_new_window(a_input, b_input):
-    global new_window  # Глобальная переменная для хранения окна
+    global new_window
 
     new_window = QMainWindow()
     new_window.setWindowTitle("График биений")
-    new_window.setGeometry(200, 200, 800, 600)
+    new_window.setGeometry(200, 200, 1000, 800)
 
     layout = QVBoxLayout()
-
-    # Создаем новый график
-    fig_new = plt.figure(facecolor="#2E3440")
+    fig_new = plt.figure(figsize=(10, 8), facecolor="white")
     canvas_new = FigureCanvas(fig_new)
     layout.addWidget(canvas_new)
+    layout.addWidget(NavigationToolbar(canvas_new, new_window))
 
-    toolbar = NavigationToolbar(canvas_new, new_window)
-    layout.addWidget(toolbar)
+    ω1 = float(a_input.text())
+    ω2 = float(b_input.text())
+    t = np.linspace(0, 2, 1000)
+    y = 2 * np.cos(((ω1 - ω2) * t)/2) * np.cos(((ω1 + ω2) * t)/2)
 
-    # Получаем параметры
-    f1 = float(a_input.text())  # Первая частота
-    f2 = float(b_input.text())  # Вторая частота
-
-    # Генерация временной оси
-    t = np.linspace(0, 1, 1000)
-    y = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
-
-    # Очистка и построение графика
     fig_new.clear()
-    ax = fig_new.add_subplot(111, facecolor="#2E3440")  # Темный фон для графика
-    ax.plot(t, y, label="Биение", color="#000000")  # Голубой цвет линии
-    ax.grid(
-        True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1"
-    )  # Основные линии
+    ax = fig_new.add_subplot(111, facecolor="white")
+    ax.plot(t, y, label="Биение", color="black")
+    ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="black")
     ax.minorticks_on()
-    ax.grid(
-        True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1"
-    )  # Вспомогательные линии
+    ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="gray")
     ax.set_xlabel("ось X")
     ax.set_ylabel("ось Y")
     ax.legend()
-
     canvas_new.draw()
 
-    # Создаем контейнер и устанавливаем его в окно
     container = QWidget()
     container.setLayout(layout)
     new_window.setCentralWidget(container)
-
     new_window.show()
 
-# Функция для переключения режима 2D/3D
 def toggle_lissajous_mode(a_input, b_input, delta_input):
     global is_3d_mode
-    is_3d_mode = not is_3d_mode  # Переключаем режим
-    plot_lissajous(a_input, b_input, delta_input)  # Перерисовываем график
+    is_3d_mode = not is_3d_mode
+    plot_lissajous(a_input, b_input, delta_input)
 
-
-# Функция для открытия режима "3D визуализация фигур Лиссажу"
 def open_lissajous():
     global current_window, fig, canvas, ax, animation, is_animation_running
 
-    # Создание окна для фигур Лиссажу
     lissajous_window = QMainWindow()
     lissajous_window.setWindowTitle("3D Фигуры Лиссажу")
-    lissajous_window.setGeometry(100, 100, 800, 600)
+    lissajous_window.setGeometry(100, 100, 1000, 800)
+    lissajous_window.setStyleSheet("""
+        QMainWindow { background-color: white; }
+        QLabel { color: black; font-size: 14px; padding: 5px; }
+        QPushButton { 
+            background-color: white; color: black; font-size: 14px; 
+            padding: 8px; border-radius: 5px; border: 2px solid black;
+            min-width: 200px;
+        }
+        QPushButton:hover { background-color: black; color: white; }
+        QLineEdit { 
+            background-color: white; color: black; font-size: 14px; 
+            padding: 5px; border-radius: 5px; border: 2px solid black;
+        }
+    """)
 
-    # Настройка стилей для окна
-    lissajous_window.setStyleSheet(
-        """
-        QMainWindow {
-            background-color: #2E3440;  /* Темный фон */
-        }
-        QLabel {
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 14px;
-            padding: 5px;
-        }
-        QPushButton {
-            background-color: #4C566A;  /* Серый фон */
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 14px;
-            padding: 8px;
-            border-radius: 5px;  /* Закругленные углы */
-            border: 2px solid #81A1C1;  /* Голубая рамка */
-        }
-        QPushButton:hover {
-            background-color: #81A1C1;  /* Голубой фон при наведении */
-            color: #2E3440;  /* Темный текст */
-        }
-        QLineEdit {
-            background-color: #4C566A;  /* Серый фон */
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 14px;
-            padding: 5px;
-            border-radius: 5px;  /* Закругленные углы */
-            border: 2px solid #81A1C1;  /* Голубая рамка */
-        }
-    """
-    )
-
-    # Основной макет
-    layout = QVBoxLayout()
-
-    # Создание графика
-    fig = plt.figure(facecolor="#2E3440")  # Темный фон для графика
+    main_layout = QVBoxLayout()
+    fig = plt.figure(figsize=(10, 8), facecolor="white")
     canvas = FigureCanvas(fig)
-    layout.addWidget(canvas)
-    toolbar = NavigationToolbar(canvas, lissajous_window)
-    layout.addWidget(toolbar)
+    main_layout.addWidget(canvas)
+    main_layout.addWidget(NavigationToolbar(canvas, lissajous_window))
 
-    # Макет для параметров
+    # Параметры ввода
     param_layout = QHBoxLayout()
+    inputs = [
+        ("ω1:", "1"),
+        ("ω2:", "1"),
+        ("φ:", "3.14")
+    ]
+    input_widgets = []
+    for label, default in inputs:
+        hbox = QHBoxLayout()
+        hbox.addWidget(QLabel(label))
+        entry = QLineEdit(default)
+        hbox.addWidget(entry)
+        param_layout.addLayout(hbox)
+        input_widgets.append(entry)
+    main_layout.addLayout(param_layout)
 
-    # Поле для ввода параметра ω1
-    a_label = QLabel("ω1:")
-    a_input = QLineEdit("5")
-    param_layout.addWidget(a_label)
-    param_layout.addWidget(a_input)
+    # Группировка кнопок по 2 в строке
+    button_pairs = [
+        ("Построить", lambda: plot_lissajous(*input_widgets)),
+        ("Открыть график в новом окне", lambda: open_lissajous_graph_in_new_window(*input_widgets)),
+        ("Переключить 2D/3D", lambda: toggle_lissajous_mode(*input_widgets)),
+        ("Анимация", lambda: toggle_animation(*input_widgets)),
+        ("Сохранить график", save_plot),
+        ("На главный экран", lambda: return_to_main(lissajous_window))
+    ]
 
-    # Поле для ввода параметра ω2
-    b_label = QLabel("ω2:")
-    b_input = QLineEdit("4")
-    param_layout.addWidget(b_label)
-    param_layout.addWidget(b_input)
+    for i in range(0, len(button_pairs), 2):
+        hbox = QHBoxLayout()
+        if i < len(button_pairs):
+            btn1 = QPushButton(button_pairs[i][0])
+            btn1.clicked.connect(button_pairs[i][1])
+            hbox.addWidget(btn1)
+        if i+1 < len(button_pairs):
+            btn2 = QPushButton(button_pairs[i+1][0])
+            btn2.clicked.connect(button_pairs[i+1][1])
+            hbox.addWidget(btn2)
+        main_layout.addLayout(hbox)
 
-    # Поле для ввода параметра φ (фаза)
-    delta_label = QLabel("φ:")
-    delta_input = QLineEdit("0.5")
-    param_layout.addWidget(delta_label)
-    param_layout.addWidget(delta_input)
-
-    layout.addLayout(param_layout)
-
-    # Кнопка для построения графика
-    update_button = QPushButton("Построить")
-    update_button.clicked.connect(lambda: plot_lissajous(a_input, b_input, delta_input))
-    layout.addWidget(update_button)
-
-    # Кнопка для открытия графика в новом окне
-    open_new_window_button = QPushButton("Открыть график в новом окне")
-    open_new_window_button.clicked.connect(lambda: open_lissajous_graph_in_new_window(a_input, b_input, delta_input))
-    layout.addWidget(open_new_window_button)
-
-    # Кнопка для переключения 2D/3D
-    mode_button = QPushButton("Переключить 2D/3D")
-    mode_button.clicked.connect(
-        lambda: toggle_lissajous_mode(a_input, b_input, delta_input)
-    )
-    layout.addWidget(mode_button)
-
-    # Кнопка для запуска/остановки анимации
-    animation_button = QPushButton("Анимация")
-    animation_button.clicked.connect(
-        lambda: toggle_animation(a_input, b_input, delta_input)
-    )
-    layout.addWidget(animation_button)
-
-    # Кнопка для сохранения графика
-    save_button = QPushButton("Сохранить график")
-    save_button.clicked.connect(save_plot)
-    layout.addWidget(save_button)
-
-    # Кнопка для возврата на главный экран
-    back_button = QPushButton("На главный экран")
-    back_button.clicked.connect(lambda: return_to_main(lissajous_window))
-    layout.addWidget(back_button)
-
-    # Установка основного виджета
     container = QWidget()
-    container.setLayout(layout)
+    container.setLayout(main_layout)
     lissajous_window.setCentralWidget(container)
 
     current_window.hide()
     lissajous_window.show()
     current_window = lissajous_window
 
-
-# Функция для построения фигур Лиссажу
 def plot_lissajous(a_input, b_input, delta_input):
     global fig, ax, is_3d_mode
 
-    # Получение параметров из полей ввода
-    ω1 = float(a_input.text())
-    ω2 = float(b_input.text())
-    φ = float(delta_input.text())
-
-    # Генерация данных для фигуры Лиссажу
-    t = np.linspace(0, 2 * np.pi, 1000)
-    x = np.sin(ω1 * t + φ)
-    y = np.sin(ω2 * t)
-    z = t / (2 * np.pi)
-
-    # Очистка и построение графика
-    fig.clear()
-    if is_3d_mode:
-        z = t / (2 * np.pi)
-        ax = fig.add_subplot(111, projection="3d", facecolor="#2E3440")
-        
-        ax.plot(x, y, z, label="Фигура Лиссажу", color="#000000")
-        ax.set_xlabel("ось X")
-        ax.set_ylabel("ось Y")
-        ax.set_zlabel("ось Z")
-    else:
-        ax = fig.add_subplot(111, facecolor="#2E3440")
-        ax.plot(x, y, label="Фигура Лиссажу", color="#000000")
-        ax.set_xlabel("ось X")
-        ax.set_ylabel("ось Y")
-
-    ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1")
-    ax.minorticks_on()
-    ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1")
-    ax.legend()
-    canvas.draw()
-
-
-# Функция для запуска/остановки анимации
-def toggle_animation(a_input, b_input, delta_input):
-    global animation, is_animation_running, x, y, z
-
-    if is_animation_running:
-        animation.event_source.stop()
-        is_animation_running = False
-        print("Анимация остановлена")
-    else:
-        # Получаем параметры
+    try:
         ω1 = float(a_input.text())
         ω2 = float(b_input.text())
         φ = float(delta_input.text())
 
-        # Генерация точек
-        t = np.linspace(0, 2 * np.pi, 500)
-        x = np.sin(ω1 * t)
-        y = np.sin(ω2 * t + φ)
-        z = t / (2 * np.pi)
+        t = np.linspace(0, 2 * np.pi, 1000)
+        x = np.cos(ω1 * t)
+        y = np.cos(ω2 * t + φ)
 
-        def update(frame):
-            global ax  # Используем тот же ax
+        fig.clear()
+        if is_3d_mode:
+            z = t / (2 * np.pi)
+            ax = fig.add_subplot(111, projection="3d", facecolor="white")
+            ax.plot(x, y, z, label="Фигура Лиссажу", color="black")
+            ax.set_zlabel("ось Z")
+        else:
+            ax = fig.add_subplot(111, facecolor="white")
+            ax.plot(x, y, label="Фигура Лиссажу", color="black")
 
-            # ⚡ Сохраняем угол ПЕРЕД очисткой!
-            elev, azim = ax.elev, ax.azim  
-
-            ax.clear()  # Очищаем график
-            ax.view_init(elev=elev, azim=azim)  # Восстанавливаем угол обзора
-
-            ax.plot(x[:frame], y[:frame], z[:frame], color="black")  # Обновляем данные
-
-            ax.set_xlabel("X")
-            ax.set_ylabel("Y")
-            ax.set_zlabel("Z")
-
-            ax.set_xlim([-1, 1])
-            ax.set_ylim([-1, 1])
-            ax.set_zlim([-1, 1])
-
-        animation = FuncAnimation(fig, update, frames=len(x), interval=50)
-        is_animation_running = True
-        print("Анимация запущена")
+        ax.set_xlabel("ось X")
+        ax.set_ylabel("ось Y")
+        ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="black")
+        ax.minorticks_on()
+        ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="gray")
+        ax.legend()
+        canvas.draw()
+    except ValueError:
+        QMessageBox.warning(current_window, "Ошибка", "Пожалуйста, введите корректные числовые значения")
 
 
-# Функция для открытия режима "Сложение двух волн - биение"
+def toggle_animation(a_input, b_input, delta_input):
+    global animation, is_animation_running
+
+    if is_animation_running:
+        animation.event_source.stop()
+        is_animation_running = False
+    else:
+        try:
+            ω1 = float(a_input.text())
+            ω2 = float(b_input.text())
+            initial_φ = float(delta_input.text())
+
+            # Сохраняем начальное значение φ
+            current_φ = initial_φ
+
+            def update(frame):
+                nonlocal current_φ
+
+                # Увеличиваем фазу на каждом кадре
+                current_φ += 0.01
+                delta_input.setText(f"{current_φ:.2f}")
+
+                # Пересчитываем данные с новым φ
+                t = np.linspace(0, 2 * np.pi, 1000)
+                x = np.cos(ω1 * t)
+                y = np.cos(ω2 * t + current_φ)
+
+                # Очищаем и перерисовываем график
+                ax.clear()
+
+                if is_3d_mode:
+                    z = t / (2 * np.pi)
+                    ax.plot(x, y, z, color="black")
+                    ax.set_zlabel("ось Z")
+                else:
+                    ax.plot(x, y, color="black")
+
+                ax.set_xlabel("ось X")
+                ax.set_ylabel("ось Y")
+                ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="black")
+                ax.minorticks_on()
+                ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="gray")
+                ax.legend()
+                canvas.draw()
+
+            # Запускаем анимацию с бесконечным числом кадров
+            animation = FuncAnimation(fig, update, frames=None, interval=100)
+            is_animation_running = True
+
+        except ValueError:
+            QMessageBox.warning(current_window, "Ошибка", "Пожалуйста, введите корректные числовые значения")
+
 def open_beats():
     global current_window, fig, canvas, ax, animation, is_animation_running
 
-    # Создание окна для биений
     beats_window = QMainWindow()
     beats_window.setWindowTitle("Сложение двух волн - биение")
-    beats_window.setGeometry(100, 100, 800, 600)
+    beats_window.setGeometry(100, 100, 1000, 800)
+    beats_window.setStyleSheet("""
+        QMainWindow { background-color: white; }
+        QLabel { color: black; font-size: 14px; padding: 5px; }
+        QPushButton { 
+            background-color: white; color: black; font-size: 14px; 
+            padding: 8px; border-radius: 5px; border: 2px solid black;
+            min-width: 200px;
+        }
+        QPushButton:hover { background-color: black; color: white; }
+        QLineEdit { 
+            background-color: white; color: black; font-size: 14px; 
+            padding: 5px; border-radius: 5px; border: 2px solid black;
+        }
+    """)
 
-    # Настройка стилей для окна
-    beats_window.setStyleSheet(
-        """
-        QMainWindow {
-            background-color: #2E3440;  /* Темный фон */
-        }
-        QLabel {
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 14px;
-            padding: 5px;
-        }
-        QPushButton {
-            background-color: #4C566A;  /* Серый фон */
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 14px;
-            padding: 8px;
-            border-radius: 5px;  /* Закругленные углы */
-            border: 2px solid #81A1C1;  /* Голубая рамка */
-        }
-        QPushButton:hover {
-            background-color: #81A1C1;  /* Голубой фон при наведении */
-            color: #2E3440;  /* Темный текст */
-        }
-        QLineEdit {
-            background-color: #4C566A;  /* Серый фон */
-            color: #ECEFF4;  /* Белый текст */
-            font-size: 14px;
-            padding: 5px;
-            border-radius: 5px;  /* Закругленные углы */
-            border: 2px solid #81A1C1;  /* Голубая рамка */
-        }
-    """
-    )
-
-    # Основной макет
-    layout = QVBoxLayout()
-
-    # Создание графика
-    fig = plt.figure(facecolor="#2E3440")  # Темный фон для графика
+    main_layout = QVBoxLayout()
+    fig = plt.figure(figsize=(10, 8), facecolor="white")
     canvas = FigureCanvas(fig)
-    layout.addWidget(canvas)
-    toolbar = NavigationToolbar(canvas, beats_window)
-    layout.addWidget(toolbar)
+    main_layout.addWidget(canvas)
+    main_layout.addWidget(NavigationToolbar(canvas, beats_window))
 
-    # Макет для параметров
+    # Параметры ввода
     param_layout = QHBoxLayout()
+    inputs = [
+        ("ω1:", "1"),
+        ("ω2:", "1.1")
+    ]
+    input_widgets = []
+    for label, default in inputs:
+        hbox = QHBoxLayout()
+        hbox.addWidget(QLabel(label))
+        entry = QLineEdit(default)
+        hbox.addWidget(entry)
+        param_layout.addLayout(hbox)
+        input_widgets.append(entry)
+    main_layout.addLayout(param_layout)
 
-    # Поле для ввода частоты f1
-    f1_label = QLabel("f1:")
-    f1_input = QLineEdit("5")
-    param_layout.addWidget(f1_label)
-    param_layout.addWidget(f1_input)
+    # Группировка кнопок по 2 в строке
+    button_pairs = [
+        ("Построить", lambda: plot_beats(*input_widgets)),
+        ("Открыть график в новом окне", lambda: open_beats_graph_in_new_window(*input_widgets)),
+        ("Анимация", lambda: toggle_beats_animation(*input_widgets)),
+        ("Сохранить график", save_plot),
+        ("На главный экран", lambda: return_to_main(beats_window))
+    ]
 
-    # Поле для ввода частоты f2
-    f2_label = QLabel("f2:")
-    f2_input = QLineEdit("6")
-    param_layout.addWidget(f2_label)
-    param_layout.addWidget(f2_input)
+    for i in range(0, len(button_pairs), 2):
+        hbox = QHBoxLayout()
+        if i < len(button_pairs):
+            btn1 = QPushButton(button_pairs[i][0])
+            btn1.clicked.connect(button_pairs[i][1])
+            hbox.addWidget(btn1)
+        if i+1 < len(button_pairs):
+            btn2 = QPushButton(button_pairs[i+1][0])
+            btn2.clicked.connect(button_pairs[i+1][1])
+            hbox.addWidget(btn2)
+        main_layout.addLayout(hbox)
 
-    layout.addLayout(param_layout)
-
-    # Кнопка для построения графика
-    update_button = QPushButton("Построить")
-    update_button.clicked.connect(lambda: plot_beats(f1_input, f2_input))
-    layout.addWidget(update_button)
-
-    # Кнопка для открытия графика в новом окне
-    open_new_window_button = QPushButton("Открыть график в новом окне")
-    open_new_window_button.clicked.connect(lambda: open_beats_graph_in_new_window(f1_input, f2_input))
-    layout.addWidget(open_new_window_button)
-
-    # Кнопка для запуска/остановки анимации
-    animation_button = QPushButton("Анимация")
-    animation_button.clicked.connect(lambda: toggle_beats_animation(f1_input, f2_input))
-    layout.addWidget(animation_button)
-
-    # Кнопка для сохранения графика
-    save_button = QPushButton("Сохранить график")
-    save_button.clicked.connect(save_plot)
-    layout.addWidget(save_button)
-
-    # Кнопка для возврата на главный экран
-    back_button = QPushButton("На главный экран")
-    back_button.clicked.connect(lambda: return_to_main(beats_window))
-    layout.addWidget(back_button)
-
-    # Установка основного виджета
     container = QWidget()
-    container.setLayout(layout)
+    container.setLayout(main_layout)
     beats_window.setCentralWidget(container)
 
     current_window.hide()
     beats_window.show()
     current_window = beats_window
 
-
-# Функция для построения биений
 def plot_beats(f1_input, f2_input):
     global fig, ax
 
-    # Получение параметров из полей ввода
-    f1 = float(f1_input.text())
-    f2 = float(f2_input.text())
+    try:
+        ω1 = float(f1_input.text())
+        ω2 = float(f2_input.text())
 
-    # Генерация данных для биений
-    t = np.linspace(0, 1, 1000)
-    y = np.sin(2 * np.pi * f1 * t) + np.sin(2 * np.pi * f2 * t)
+        t = np.linspace(0, 2, 1000)
+        y = 2 * np.cos(((ω1 - ω2) * t)/2) * np.cos(((ω1 + ω2) * t)/2)
 
-    # Очистка и построение графика
-    fig.clear()
-    ax = fig.add_subplot(111, facecolor="#2E3440")  # Темный фон для графика
-    ax.plot(t, y, label="Биение", color="#000000")  # Голубой цвет линии\
-    ax.grid(
-        True, which="major", linestyle="-", linewidth=0.75, color="#81A1C1"
-    )  # Основные линии
-    ax.minorticks_on()
-    ax.grid(
-        True, which="minor", linestyle=":", linewidth=0.5, color="#81A1C1"
-    )  # Вспомогательные линии
-    ax.legend()
-    ax.set_xlabel("ось X")
-    ax.set_ylabel("ось Y")
-    canvas.draw()
+        fig.clear()
+        ax = fig.add_subplot(111, facecolor="white")
+        ax.plot(t, y, label="Биение", color="black")
+        ax.grid(True, which="major", linestyle="-", linewidth=0.75, color="black")
+        ax.minorticks_on()
+        ax.grid(True, which="minor", linestyle=":", linewidth=0.5, color="gray")
+        ax.set_xlabel("ось X")
+        ax.set_ylabel("ось Y")
+        ax.legend()
+        canvas.draw()
+    except ValueError:
+        QMessageBox.warning(current_window, "Ошибка", "Пожалуйста, введите корректные числовые значения")
 
-
-# Функция для запуска/остановки анимации биений
-def toggle_beats_animation(f1_input, f2_input):
+def toggle_beats_animation(ω1_input, ω2_input):
     global animation, is_animation_running
 
     if is_animation_running:
-        # Остановка анимации
         animation.event_source.stop()
         is_animation_running = False
-        print("Анимация остановлена")
     else:
-        # Запуск анимации
         def update(frame):
-            f1_input.setText(str(float(f1_input.text()) + 0.1))
-            plot_beats(f1_input, f2_input)
+            try:
+                ω1_input.setText(str(float(ω1_input.text()) + 0.05))
+                plot_beats(ω1_input, ω2_input)
+            except ValueError:
+                animation.event_source.stop()
+                is_animation_running = False
+                QMessageBox.warning(current_window, "Ошибка", "Некорректное значение частоты")
 
         animation = FuncAnimation(fig, update, frames=50, interval=100)
         is_animation_running = True
-        print("Анимация запущена")
 
-
-# Функция для сохранения графика
 def save_plot():
     filename = "graph.png"
     fig.savefig(filename)
-    QMessageBox.information(
-        current_window, "Сохранено", f"График сохранен как {filename}"
-    )
+    QMessageBox.information(current_window, "Сохранено", f"График сохранен как {filename}")
 
-
-# Функция для возврата на главный экран
 def return_to_main(window):
     global current_window
     window.hide()
     current_window = create_main_window()
     current_window.show()
 
-
-# Запуск приложения
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_window = create_main_window()
